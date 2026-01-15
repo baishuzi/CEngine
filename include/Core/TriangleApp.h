@@ -1,10 +1,12 @@
 #pragma once
 #include "../Core/Application.h"
+#include <vector>
 
 class TriangleApp : public Application
 {
 public:
     TriangleApp();
+    void SetMeshVerticals(std::vector<float> verticals);
 
 protected:
     void Initialize() override;
@@ -27,4 +29,7 @@ private:
     float m_TriangleColors[9];  // 三个顶点的RGB颜色
     bool m_ShowDemoWindow;      // 是否显示ImGui演示窗口
     bool m_ShowControlWindow;   // 是否显示控制窗口
+
+    std::vector<float> allMeshVerticals;    //mesh顶点数据
+    std::vector<float> renderVerticals;
 };

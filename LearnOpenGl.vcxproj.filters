@@ -54,12 +54,24 @@
     <ClCompile Include="include\ThirdParty\backends\imgui_impl_opengl3.cpp">
       <Filter>ThirdParty</Filter>
     </ClCompile>
+    <ClCompile Include="Vector3.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Core\Application.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\Core\TriangleApp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector3.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

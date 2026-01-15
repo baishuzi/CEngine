@@ -1,58 +1,45 @@
 #include "Core/TriangleApp.h"
 #include <glad/glad.h>
 #include <iostream>
+#include <cmath>
 #include "imgui.h"
+#include "Vector3.h"
 
-// 顶点着色器源码
-//const char* vertexShaderSource = R"(
-//#version 330 core
-//layout (location = 0) in vec3 aPos;
-//layout (location = 1) in vec3 aColor;
-//out vec3 ourColor;
-//void main() {
-//    gl_Position = vec4(aPos, 1.0);
-//    ourColor = aColor;
-//}
-//)";
+#define PI 3.1415926535897
 
 const char* vertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec3 aPos;
+    
+    out float vZCoord;
+
     void main()
     {
-        gl_Position = vec4(aPos, 1.0);
+        gl_Position = vec4(aPos * 0.2, 1.0);
+        vZCoord = gl_Position.z;
     }
     )";
 
-// 片段着色器源码
-//const char* fragmentShaderSource = R"(
-//#version 330 core
-//out vec4 FragColor;
-//in vec3 ourColor;
-//void main() {
-//    FragColor = vec4(ourColor, 1.0);
-//}
-//)";
 
 const char* fragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
-    uniform vec3 uColor1;  // 顶点1颜色
-    uniform vec3 uColor2;  // 顶点2颜色
-    uniform vec3 uColor3;  // 顶点3颜色
-    uniform float uInterpolation;  // 插值因子（可选）
-    
+
+    uniform vec3 uObjectColor;
+    uniform vec3 uBackgroundColor;
+    in float vZCoord;
+
     void main()
     {
-        // 简单的三角形颜色插值（重心坐标插值）
-        vec3 color = mix(mix(uColor1, uColor2, gl_FragCoord.x/800.0), 
-                         uColor3, gl_FragCoord.y/600.0);
-        FragColor = vec4(color, 1.0);
+        //float normalizedZ = (vZCoord+1) * 0.5;
+        float normalizedZ = (vZCoord+1) * 1;
+        vec3 finalColor = mix(uObjectColor, uBackgroundColor, normalizedZ);
+        FragColor = vec4(finalColor, 1.0);
     }
     )";
 
 TriangleApp::TriangleApp()
-    : Application("Triangle Engine", 800, 600),
+    : Application("Triangle Engine", 800, 800),
     m_VAO(0), m_VBO(0), m_ShaderProgram(0)
 {
     // 初始化ImGui控制变量
@@ -74,99 +61,38 @@ TriangleApp::TriangleApp()
 }
 
 void TriangleApp::Initialize() {
-    std::cout << "Initializing Triangle App..." << std::endl;
-
-    // 1. 创建并编译着色器
-    // 顶点着色器
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    // 检查编译错误
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "Vertex shader compilation failed:\n" << infoLog << std::endl;
-    }
-
-    // 片段着色器
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "Fragment shader compilation failed:\n" << infoLog << std::endl;
-    }
-
-    // 2. 链接着色器程序
-    m_ShaderProgram = glCreateProgram();
-    glAttachShader(m_ShaderProgram, vertexShader);
-    glAttachShader(m_ShaderProgram, fragmentShader);
-    glLinkProgram(m_ShaderProgram);
-    glGetProgramiv(m_ShaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(m_ShaderProgram, 512, NULL, infoLog);
-        std::cout << "Shader program linking failed:\n" << infoLog << std::endl;
-    }
-
-    // 3. 删除着色器对象（已链接到程序）
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    // 4. 设置顶点数据
-    //float vertices[] = {
-    //    // 位置              // 颜色
-    //     0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // 顶点1：红色
-    //    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,  // 顶点2：绿色
-    //     0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f   // 顶点3：蓝色
-    //};
-    float vertices[] = {
-        // 位置             
-         0.0f,  0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f
-    };
-
-
-    // 5. 创建VAO和VBO
-    glGenVertexArrays(1, &m_VAO);
-    glGenBuffers(1, &m_VBO);
-
-    // 绑定VAO
-    glBindVertexArray(m_VAO);
-
-    // 绑定VBO并复制数据
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // 6. 设置顶点属性指针
-    // 位置属性
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // 7. 解绑VBO和VAO（可选）
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    std::cout << "Triangle App initialized successfully!" << std::endl;
+    SetupShaders();
+    SetupBuffers();
 }
 
 void TriangleApp::Render()
 {
-    // 使用ImGui控制的背景色
+    // 1. 设置背景色
     glClearColor(m_ClearColor[0], m_ClearColor[1], m_ClearColor[2], m_ClearColor[3]);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // 使用着色器程序
+    //开启深度测试
+    glEnable(GL_DEPTH_TEST);
+
+    // 2. 激活着色器程序
     glUseProgram(m_ShaderProgram);
 
-    // 绘制三角形
+    // 设置物体颜色（比如红色）
+    int objectColorLoc = glGetUniformLocation(m_ShaderProgram, "uObjectColor");
+    glUniform3f(objectColorLoc, 1.0f, 1.0f, 1.0f);  // 红色，可修改为其他非黑色
+
+    // 新增：设置深度渐变色 Uniform（补充缺失的赋值）
+    int bgColorLoc = glGetUniformLocation(m_ShaderProgram, "uBackgroundColor");
+    if (bgColorLoc != -1) {
+        glUniform3f(bgColorLoc, 0.0f, 0.0f, 0.0f);
+    }
+
+    // 5. 绘制三角形
     glBindVertexArray(m_VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    int vertexCount = renderVerticals.size() / 3;
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 }
+
 void TriangleApp::Shutdown() {
     std::cout << "Shutting down Triangle App..." << std::endl;
 
@@ -213,48 +139,126 @@ void TriangleApp::OnImGuiRender()
     }
 }
 
+void TriangleApp::SetupShaders() {
+    // 1. 创建并编译着色器
+    // 顶点着色器
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+
+    // 检查编译错误
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cout << "Vertex shader compilation failed:\n" << infoLog << std::endl;
+    }
+
+    // 片段着色器
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cout << "Fragment shader compilation failed:\n" << infoLog << std::endl;
+    }
+
+    // 2. 链接着色器程序
+    m_ShaderProgram = glCreateProgram();
+    glAttachShader(m_ShaderProgram, vertexShader);
+    glAttachShader(m_ShaderProgram, fragmentShader);
+    glLinkProgram(m_ShaderProgram);
+    glGetProgramiv(m_ShaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(m_ShaderProgram, 512, NULL, infoLog);
+        std::cout << "Shader program linking failed:\n" << infoLog << std::endl;
+    }
+
+    // 3. 删除着色器对象（已链接到程序）
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+}
+
+void TriangleApp::SetMeshVerticals(std::vector<float> verticals) {
+    allMeshVerticals = verticals;
+}
+
 void TriangleApp::SetupBuffers()
 {
-    // 顶点位置数据（不变）
-    float positions[] = {
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-         0.0f,  0.5f, 0.0f   // top
-    };
-
-    // 创建VAO和VBO
+    // 5. 创建VAO和VBO
     glGenVertexArrays(1, &m_VAO);
     glGenBuffers(1, &m_VBO);
 
+    // 绑定VAO,绑定VBO
     glBindVertexArray(m_VAO);
-
-    // 只上传位置数据到VBO
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(positions), positions, GL_STATIC_DRAW);
 
+    //分配buffer空间
+    glBufferData(GL_ARRAY_BUFFER, allMeshVerticals.size() * sizeof(float), allMeshVerticals.data(), GL_DYNAMIC_DRAW);
+
+    // 6. 设置顶点属性指针
     // 位置属性
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
-    // 注意：颜色数据现在通过uniform传递，而不是顶点属性
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
+//更新VBO数据
 void TriangleApp::Update(float deltaTime)
 {
-    // 更新着色器中的颜色uniform
-    glUseProgram(m_ShaderProgram);
+    // 绑定VAO,绑定VBO
+    glBindVertexArray(m_VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+    
+    //变换矩阵
+    // 绕 x 轴 45° + 绕 y 轴 45° 合并后的旋转矩阵（无变量，直接复制使用）
+    float rotationMatrix[16] = {
+        0.70710678f,  0.5f,          0.5f,          0.0f,
+        0.0f,         0.70710678f,  -0.70710678f,  0.0f,
+        -0.70710678f, 0.5f,          0.5f,          0.0f,
+        0.0f,         0.0f,          0.0f,          1.0f
+    };
+    Vector3 screenNor = Vector3(0, 0, 1);
 
-    // 设置顶点1颜色
-    int location1 = glGetUniformLocation(m_ShaderProgram, "uColor1");
-    glUniform3f(location1, m_TriangleColors[0], m_TriangleColors[1], m_TriangleColors[2]);
+    //模型坐标变换世界坐标
+    std::vector<float> worldVertivals;
+    for (size_t i = 0; i < allMeshVerticals.size(); i+=3)
+    {
+        Vector3 point = Vector3(allMeshVerticals[i], allMeshVerticals[i+1], allMeshVerticals[i+2]);
+        Vector3 afterTrans = point.Transform(rotationMatrix);
 
-    // 设置顶点2颜色
-    int location2 = glGetUniformLocation(m_ShaderProgram, "uColor2");
-    glUniform3f(location2, m_TriangleColors[3], m_TriangleColors[4], m_TriangleColors[5]);
+        worldVertivals.push_back(afterTrans.x);
+        worldVertivals.push_back(afterTrans.y);
+        worldVertivals.push_back(afterTrans.z);
+    }
 
-    // 设置顶点3颜色
-    int location3 = glGetUniformLocation(m_ShaderProgram, "uColor3");
-    glUniform3f(location3, m_TriangleColors[6], m_TriangleColors[7], m_TriangleColors[8]);
+    //背面剔除
+    renderVerticals.clear();
+    for(int i = 0;i< worldVertivals.size();i+=9)
+    {
+        //计算三个点的法向量,
+        Vector3 pointa = Vector3(worldVertivals[i], worldVertivals[i + 1], worldVertivals[i + 2]);
+        Vector3 pointb = Vector3(worldVertivals[i+3], worldVertivals[i + 4], worldVertivals[i + 5]);
+        Vector3 pointc = Vector3(worldVertivals[i+6], worldVertivals[i + 7], worldVertivals[i + 8]);
+
+
+
+        Vector3 faceNor = Vector3::CalculatePlaneNormal(pointa, pointb, pointc);
+        float dotRst = faceNor * screenNor;
+        if (dotRst < 0) {
+            renderVerticals.push_back(worldVertivals[i]);
+            renderVerticals.push_back(worldVertivals[i+1]);
+            renderVerticals.push_back(worldVertivals[i+2]);
+            renderVerticals.push_back(worldVertivals[i+3]);
+            renderVerticals.push_back(worldVertivals[i+4]);
+            renderVerticals.push_back(worldVertivals[i+5]);
+            renderVerticals.push_back(worldVertivals[i+6]);
+            renderVerticals.push_back(worldVertivals[i+7]);
+            renderVerticals.push_back(worldVertivals[i+8]);
+        }
+    }
+
+    //传递VBO数据
+    glBufferData(GL_ARRAY_BUFFER, renderVerticals.size() * sizeof(float), renderVerticals.data(), GL_DYNAMIC_DRAW);
 }

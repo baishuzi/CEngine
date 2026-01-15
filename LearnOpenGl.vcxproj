@@ -155,12 +155,16 @@
     <ClCompile Include="include\ThirdParty\imgui_tables.cpp" />
     <ClCompile Include="include\ThirdParty\imgui_widgets.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="TriangleApp.cpp" />
+    <ClCompile Include="Vector3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Core\Application.h" />
     <ClInclude Include="include\Core\TriangleApp.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
